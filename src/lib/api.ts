@@ -74,6 +74,22 @@ export const api = {
     }
   },
 
+  async updateProfile(payload: {
+    username?: string;
+    avatar?: string;
+    title?: string;
+    email?: string;
+  }): Promise<{ success: boolean; message: string; user: AdminUser }> {
+    const res = await fetch(`${API_BASE}/auth/profile`, {
+      method: 'PUT',
+      headers: getHeaders(),
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to update admin profile');
+    return data;
+  },
+
   async getSecurityStatus(): Promise<SecurityStatus | null> {
     try {
       const res = await fetch(`${API_BASE}/security/status`);

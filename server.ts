@@ -111,7 +111,9 @@ async function startServer() {
         email: admin.email,
         username: admin.username,
         role: admin.role,
-        lastLogin: admin.lastLogin
+        lastLogin: admin.lastLogin,
+        avatar: admin.avatar,
+        title: admin.title
       }
     });
   });
@@ -136,9 +138,57 @@ async function startServer() {
         email: admin.email,
         username: admin.username,
         role: admin.role,
-        lastLogin: admin.lastLogin
+        lastLogin: admin.lastLogin,
+        avatar: admin.avatar,
+        title: admin.title
       }
     });
+  });
+
+  // Update Admin Profile (ADMIN ONLY) - Password changes strictly disabled
+  app.put('/api/auth/profile', requireAdmin, async (req, res) => {
+    try {
+      const { username, avatar, title, email, newPassword, password } = req.body;
+
+      if (newPassword || password) {
+        res.status(403).json({
+          error: 'Parol yangilash funksiyasi xavfsizlik nuqtai nazaridan butunlay o‘chirilgan. (Password modification is permanently disabled for system security).'
+        });
+        return;
+      }
+
+      if (username !== undefined && !String(username).trim()) {
+        res.status(400).json({ error: 'Username cannot be empty.' });
+        return;
+      }
+      if (email !== undefined && (!String(email).includes('@') || !String(email).includes('.'))) {
+        res.status(400).json({ error: 'A valid email address is required.' });
+        return;
+      }
+
+      const updatedAdmin = await db.updateAdminProfile({
+        username: username !== undefined ? String(username).trim() : undefined,
+        avatar: avatar !== undefined ? String(avatar).trim() : undefined,
+        title: title !== undefined ? String(title).trim() : undefined,
+        email: email !== undefined ? String(email).trim() : undefined,
+      });
+
+      res.json({
+        success: true,
+        message: 'Admin profile successfully updated.',
+        user: {
+          id: updatedAdmin.id,
+          email: updatedAdmin.email,
+          username: updatedAdmin.username,
+          role: updatedAdmin.role,
+          lastLogin: updatedAdmin.lastLogin,
+          avatar: updatedAdmin.avatar,
+          title: updatedAdmin.title
+        }
+      });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message || 'Failed to update admin profile.' });
+    }
   });
 
   // Public Registration: PERMANENTLY DISABLED

@@ -34,12 +34,17 @@ export interface Article {
   updatedAt: string;
 }
 
+export type Language = 'uz' | 'ru' | 'en';
+export type Theme = 'light' | 'dark';
+
 export interface AdminUser {
   id: string;
   email: string;
   username: string;
   role: 'admin';
   lastLogin?: string;
+  avatar?: string;
+  title?: string;
 }
 
 export interface SecurityStatus {

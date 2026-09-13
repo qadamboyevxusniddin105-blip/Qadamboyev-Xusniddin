@@ -8,6 +8,8 @@ import {
   Edit,
   Trash2,
   Eye,
+  EyeOff,
+  KeyRound,
   FileText,
   FolderPlus,
   RefreshCw,
@@ -21,11 +23,20 @@ import {
   Clock,
   BookOpen,
   Sparkles,
-  ExternalLink
+  ExternalLink,
+  User,
+  Camera,
+  Sun,
+  Moon,
+  Mail,
+  Briefcase,
+  Check
 } from 'lucide-react';
-import { Article, Category, AdminUser, SecurityStatus } from '../types.js';
+import { Article, Category, AdminUser, SecurityStatus, Language, Theme } from '../types.js';
+import { BrandLogo } from './BrandLogo.js';
 import { api } from '../lib/api.js';
 import { RichTextEditor } from './RichTextEditor.js';
+import { getTranslation } from '../lib/translations.js';
 
 interface AdminPanelProps {
   adminUser: AdminUser | null;
@@ -36,6 +47,10 @@ interface AdminPanelProps {
   onRefreshCategories: () => void;
   onRefreshArticles: () => void;
   onOpenArchitectureModal: () => void;
+  lang?: Language;
+  onUpdateUser?: (user: AdminUser) => void;
+  theme?: Theme;
+  onToggleTheme?: () => void;
 }
 
 export const AdminPanel: React.FC<AdminPanelProps> = ({
@@ -47,22 +62,45 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   onRefreshCategories,
   onRefreshArticles,
   onOpenArchitectureModal,
+  lang = 'uz',
+  onUpdateUser,
+  theme,
+  onToggleTheme,
 }) => {
-  // Login form state
+  // Enhanced Security Login & Authentication state
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loginLoading, setLoginLoading] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
   const [rateLimitLocked, setRateLimitLocked] = useState(false);
   const [lockoutTimer, setLockoutTimer] = useState<number>(0);
 
   // Admin Dashboard state
-  const [activeTab, setActiveTab] = useState<'articles' | 'editor' | 'categories' | 'security'>('articles');
+  const [activeTab, setActiveTab] = useState<'articles' | 'editor' | 'categories' | 'security' | 'profile'>('articles');
   const [articles, setArticles] = useState<Article[]>([]);
   const [articlesLoading, setArticlesLoading] = useState(false);
   const [articleFilter, setArticleFilter] = useState<'all' | 'published' | 'draft'>('all');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Profile Editor state
+  const [profileUsername, setProfileUsername] = useState(adminUser?.username || '');
+  const [profileAvatar, setProfileAvatar] = useState(adminUser?.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80');
+  const [profileTitle, setProfileTitle] = useState(adminUser?.title || 'Editor-in-Chief & Publisher');
+  const [profileEmail, setProfileEmail] = useState(adminUser?.email || '');
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [profileMessage, setProfileMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  // Sync profile values when adminUser updates
+  useEffect(() => {
+    if (adminUser) {
+      setProfileUsername(adminUser.username || '');
+      setProfileAvatar(adminUser.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80');
+      setProfileTitle(adminUser.title || 'Editor-in-Chief & Publisher');
+      setProfileEmail(adminUser.email || '');
+    }
+  }, [adminUser]);
 
   // Editor state
   const [editingArticleId, setEditingArticleId] = useState<string | null>(null);
@@ -138,27 +176,22 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     setLoginLoading(true);
 
     try {
-      const res = await api.login(email, password);
+      const res = await api.login(email.trim(), password);
       if (res.ok) {
         onLoginSuccess(res.data.user);
         loadArticles();
       } else {
-        setLoginError(res.data.error || 'Authentication failed. Access denied.');
+        setLoginError(res.data.error || (lang === 'uz' ? 'Kirish taqiqlandi. Login yoki parol noto‘g‘ri.' : 'Authentication failed. Access denied.'));
         if (res.data.isLockedOut) {
           setRateLimitLocked(true);
           setLockoutTimer(res.data.lockoutRemainingSeconds || 900);
         }
       }
     } catch (err) {
-      setLoginError('An unexpected network error occurred while connecting to the security gateway.');
+      setLoginError(lang === 'uz' ? 'Xavfsizlik shlyuzi bilan bog‘lanishda xatolik yuz berdi.' : 'An unexpected network error occurred while connecting to the security gateway.');
     } finally {
       setLoginLoading(false);
     }
-  };
-
-  const fillDemoCredentials = () => {
-    setEmail('admin@chronicle.news');
-    setPassword('AdminSecure2026!#News');
   };
 
   const startNewArticle = () => {
@@ -320,6 +353,58 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     }
   };
 
+  const handleSaveProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!adminUser) return;
+    if (!profileUsername.trim()) {
+      setProfileMessage({ type: 'error', text: 'Admin nik / ism bo‘sh bo‘lishi mumkin emas.' });
+      return;
+    }
+
+    setProfileSaving(true);
+    setProfileMessage(null);
+
+    try {
+      const res = await api.updateProfile({
+        username: profileUsername.trim(),
+        avatar: profileAvatar.trim(),
+        title: profileTitle.trim(),
+        email: profileEmail.trim(),
+      });
+
+      if (onUpdateUser) {
+        onUpdateUser(res.user);
+      }
+      setProfileMessage({ type: 'success', text: 'Admin profili muvaffaqiyatli saqlandi!' });
+    } catch (err: any) {
+      setProfileMessage({ type: 'error', text: err.message || 'Profilni saqlashda xatolik yuz berdi.' });
+    } finally {
+      setProfileSaving(false);
+    }
+  };
+
+  const handleProfileAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      alert('Iltimos faqat rasm faylini tanlang (JPEG, PNG, WebP).');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = async () => {
+      try {
+        const base64Url = reader.result as string;
+        const uploadedUrl = await api.uploadImage(base64Url, file.name);
+        setProfileAvatar(uploadedUrl);
+      } catch (err) {
+        setProfileAvatar(reader.result as string);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
   const handleResetSampleData = async () => {
     if (!confirm('Reset all news articles and categories to default sample editorial data?')) return;
     setResettingData(true);
@@ -337,121 +422,137 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   };
 
   // --------------------------------------------------------------------------
-  // SCREEN 1: LOGIN FORM (IF NOT AUTHENTICATED)
+  // SCREEN 1: ULTRA-SECURE ADMIN AUTHENTICATION GATEWAY
   // --------------------------------------------------------------------------
   if (!adminUser) {
     return (
-      <div className="min-h-screen bg-stone-900 flex items-center justify-center p-4">
-        <div className="max-w-md w-full bg-white rounded-2xl shadow-2xl border border-stone-300 overflow-hidden">
+      <div className="min-h-screen bg-stone-950 flex items-center justify-center p-4">
+        <div className="max-w-md w-full bg-white dark:bg-stone-900 rounded-2xl shadow-2xl border border-stone-200 dark:border-stone-800 overflow-hidden">
           {/* Header */}
-          <div className="bg-stone-950 text-white p-6 text-center relative border-b border-stone-800">
+          <div className="bg-stone-900 text-white p-6 text-center relative border-b border-stone-800">
             <button
               onClick={onClose}
-              className="absolute left-4 top-4 text-xs font-semibold uppercase tracking-wider text-stone-400 hover:text-white flex items-center gap-1"
+              className="absolute left-4 top-4 text-xs font-semibold uppercase tracking-wider text-stone-400 hover:text-white flex items-center gap-1.5 transition-colors"
             >
               <ArrowLeft className="w-4 h-4" />
-              <span>Exit</span>
+              <span>{lang === 'uz' ? 'Chiqish' : lang === 'ru' ? 'Выход' : 'Exit'}</span>
             </button>
 
-            <div className="w-12 h-12 bg-red-700 rounded-xl flex items-center justify-center mx-auto mb-3 text-white shadow-lg">
+            <div className="w-12 h-12 bg-red-700/90 rounded-xl flex items-center justify-center mx-auto mb-3 text-white shadow-lg border border-red-500/30">
               <Shield className="w-6 h-6" />
             </div>
-            <h2 className="text-xl font-bold font-serif tracking-tight">Editorial Security Gateway</h2>
-            <p className="text-xs text-stone-400 mt-1 uppercase tracking-widest">
-              Strict Single-Admin Access
+            <h2 className="text-xl font-bold font-serif tracking-tight">
+              {lang === 'uz' ? 'Tahririyat Xavfsizlik Shlyuzi' : lang === 'ru' ? 'Шлюз безопасности редакции' : 'Editorial Security Gateway'}
+            </h2>
+            <p className="text-[11px] text-stone-400 mt-1 uppercase tracking-widest font-mono">
+              {lang === 'uz' ? 'Yagona Admin Himoyalangan Kirish' : lang === 'ru' ? 'Доступ строго для администратора' : 'Strict Single-Admin Access'}
             </p>
+
           </div>
 
-          {/* Form */}
-          <form onSubmit={handleLogin} className="p-6 space-y-4">
-            {/* Strict Notice */}
-            <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-900 flex items-start gap-2.5">
-              <AlertCircle className="w-4 h-4 text-amber-700 flex-shrink-0 mt-0.5" />
-              <div>
-                <span className="font-bold block">Access Restricted</span>
-                Public registration is disabled. Only the designated sole administrator can log in.
-              </div>
-            </div>
-
+          {/* Form Body */}
+          <div className="p-6 space-y-4">
             {/* Error Message */}
             {loginError && (
-              <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-xs text-red-800 flex items-start gap-2.5 animate-in fade-in">
-                <ShieldAlert className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" />
-                <div>{loginError}</div>
+              <div className="bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 rounded-xl p-3 text-xs text-red-800 dark:text-red-300 flex items-start gap-2.5 animate-in fade-in">
+                <ShieldAlert className="w-4 h-4 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
+                <div className="leading-relaxed">{loginError}</div>
               </div>
             )}
 
             {/* Lockout alert */}
             {rateLimitLocked && (
-              <div className="bg-red-100 border border-red-300 rounded-xl p-3 text-xs text-red-900 text-center font-bold">
-                Account Locked Out: Please wait {lockoutTimer}s
+              <div className="bg-red-100 dark:bg-red-950 border border-red-300 dark:border-red-800 rounded-xl p-3 text-xs text-red-900 dark:text-red-200 text-center font-bold animate-pulse">
+                {lang === 'uz'
+                  ? `Hisob xavfsizlik maqsadida vaqtincha bloklandi: ${lockoutTimer} soniya kuting`
+                  : `Account locked out: please wait ${lockoutTimer}s`}
               </div>
             )}
 
-            <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-stone-700 mb-1">
-                Admin Email / Username
-              </label>
-              <input
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="admin@chronicle.news"
-                disabled={rateLimitLocked}
-                className="w-full px-3.5 py-2.5 bg-stone-50 border border-stone-300 rounded-lg text-sm text-stone-900 focus:outline-none focus:ring-2 focus:ring-stone-400 focus:bg-white"
-              />
-            </div>
+            <form onSubmit={handleLogin} className="space-y-4">
+              <div className="bg-stone-50 dark:bg-stone-800/40 border border-stone-200 dark:border-stone-800 rounded-xl p-3 text-xs text-stone-700 dark:text-stone-300 flex items-start gap-2.5">
+                <Lock className="w-4 h-4 text-stone-500 flex-shrink-0 mt-0.5" />
+                <div className="text-[11px] leading-relaxed">
+                  {lang === 'uz'
+                    ? 'Saytga kirish faqat rasmiy administratorga ruxsat etiladi. Hech kimga oshkor etilmaydigan shaxsiy emailingiz va parolingizni kiriting.'
+                    : lang === 'ru'
+                    ? 'Доступ в редакторскую панель разрешен исключительно администратору сайта.'
+                    : 'Editorial console access is restricted strictly to the sole administrator.'}
+                </div>
+              </div>
 
-            <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-stone-700 mb-1">
-                Admin Password
-              </label>
-              <input
-                type="password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••••••••••"
-                disabled={rateLimitLocked}
-                className="w-full px-3.5 py-2.5 bg-stone-50 border border-stone-300 rounded-lg text-sm text-stone-900 focus:outline-none focus:ring-2 focus:ring-stone-400 focus:bg-white"
-              />
-            </div>
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-stone-700 dark:text-stone-300 mb-1">
+                  {lang === 'uz' ? 'Admin Elektron Pochta' : lang === 'ru' ? 'Email администратора' : 'Admin Email'}
+                </label>
+                <input
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="admin@domain.uz"
+                  disabled={rateLimitLocked}
+                  className="w-full px-3.5 py-2.5 bg-stone-50 dark:bg-stone-800 border border-stone-300 dark:border-stone-700 rounded-lg text-sm text-stone-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-red-600 focus:bg-white"
+                />
+              </div>
 
-            <button
-              type="submit"
-              disabled={loginLoading || rateLimitLocked}
-              className="w-full py-3 bg-stone-950 hover:bg-stone-800 text-white rounded-lg text-xs font-bold uppercase tracking-wider transition-all disabled:opacity-50 flex items-center justify-center gap-2 shadow-sm"
-            >
-              {loginLoading ? (
-                <>
-                  <RefreshCw className="w-4 h-4 animate-spin" />
-                  <span>Verifying Credentials...</span>
-                </>
-              ) : (
-                <>
-                  <Lock className="w-4 h-4" />
-                  <span>Authenticate Session</span>
-                </>
-              )}
-            </button>
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-stone-700 dark:text-stone-300">
+                    {lang === 'uz' ? 'Admin Maxfiy Parol' : lang === 'ru' ? 'Пароль администратора' : 'Admin Password'}
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="text-xs text-stone-500 hover:text-stone-800 dark:hover:text-stone-200 flex items-center gap-1 cursor-pointer"
+                  >
+                    {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                    <span>{showPassword ? (lang === 'uz' ? 'Yashirish' : 'Hide') : (lang === 'uz' ? 'Ko‘rsatish' : 'Show')}</span>
+                  </button>
+                </div>
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••••••••••"
+                  disabled={rateLimitLocked}
+                  className="w-full px-3.5 py-2.5 bg-stone-50 dark:bg-stone-800 border border-stone-300 dark:border-stone-700 rounded-lg text-sm text-stone-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-red-600 focus:bg-white font-mono"
+                />
+              </div>
 
-            {/* Demo Helper Button */}
-            <div className="pt-2 border-t border-stone-200">
               <button
-                type="button"
-                onClick={fillDemoCredentials}
-                className="w-full text-center py-2 text-xs font-medium text-stone-600 bg-stone-100 hover:bg-stone-200 rounded-lg transition-colors border border-stone-200"
+                type="submit"
+                disabled={loginLoading || rateLimitLocked}
+                className="w-full py-3 bg-red-700 hover:bg-red-800 text-white rounded-lg text-xs font-bold uppercase tracking-wider transition-all disabled:opacity-50 flex items-center justify-center gap-2 shadow-sm cursor-pointer"
               >
-                Auto-fill Seeded Admin Credentials
+                {loginLoading ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    <span>{lang === 'uz' ? 'Tekshirilmoqda...' : 'Verifying Credentials...'}</span>
+                  </>
+                ) : (
+                  <>
+                    <Lock className="w-4 h-4" />
+                    <span>{lang === 'uz' ? 'Tizimga Kirish' : lang === 'ru' ? 'Войти в панель' : 'Authenticate Session'}</span>
+                  </>
+                )}
               </button>
-            </div>
-          </form>
+
+              <div className="pt-2 text-center text-[10px] text-stone-400 dark:text-stone-500">
+                {lang === 'uz'
+                  ? 'Begona shaxslar uchun ro‘yxatdan o‘tish yoki parol tiklash mavjud emas.'
+                  : lang === 'ru'
+                  ? 'Регистрация и публичный сброс пароля отключены в целях безопасности.'
+                  : 'Public registration and password resets are disabled for security.'}
+              </div>
+            </form>
+          </div>
 
           {/* Footer Security Badges */}
-          <div className="bg-stone-50 px-6 py-3 border-t border-stone-200 flex items-center justify-between text-[11px] text-stone-500">
+          <div className="bg-stone-50 dark:bg-stone-950 px-6 py-3 border-t border-stone-200 dark:border-stone-800 flex items-center justify-between text-[11px] text-stone-500 dark:text-stone-400">
             <span className="flex items-center gap-1">
-              <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" /> BCrypt Salt 12
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> BCrypt Salt 12
             </span>
             <span>•</span>
             <span>JWT HTTP-Only</span>
@@ -488,12 +589,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       <header className="bg-stone-900 text-white border-b border-stone-800 sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="p-1.5 bg-red-700 rounded-md">
-              <Shield className="w-4 h-4 text-white" />
-            </div>
+            <BrandLogo size="sm" />
             <div>
               <div className="text-sm font-bold font-serif flex items-center gap-2">
-                <span>The Chronicle Editorial Console</span>
+                <span>Davir Xusniddin coder Console</span>
                 <span className="bg-emerald-900/80 text-emerald-400 border border-emerald-700 text-[10px] px-2 py-0.2 rounded font-sans uppercase tracking-wider">
                   Admin Enforced
                 </span>
@@ -582,6 +681,19 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             >
               <ShieldCheck className="w-4 h-4 text-emerald-600" />
               <span>Security Audit</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('profile')}
+              id="admin-tab-profile"
+              className={`px-4 py-2 text-xs font-bold uppercase tracking-wider rounded-lg transition-colors flex items-center gap-2 ${
+                activeTab === 'profile'
+                  ? 'bg-stone-900 text-white'
+                  : 'text-stone-600 hover:bg-stone-100 hover:text-stone-900'
+              }`}
+            >
+              <User className="w-4 h-4 text-red-600" />
+              <span>Admin Profil</span>
             </button>
           </div>
         </div>
@@ -1137,7 +1249,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     <span>Real-Time Security Defense Audit</span>
                   </h3>
                   <p className="text-xs text-stone-500">
-                    Live verification of OWASP Top 10 mitigation strategies implemented across Chronicle.
+                    Live verification of OWASP Top 10 mitigation strategies implemented across Davir Xusniddin coder.
                   </p>
                 </div>
                 <button
@@ -1245,6 +1357,213 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   <span>Restore Sample Data</span>
                 </button>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* TAB 5: ADMIN PROFILE (Faqat Adminlar Uchun) */}
+        {activeTab === 'profile' && (
+          <div className="max-w-3xl mx-auto space-y-6">
+            <div className="bg-white rounded-2xl border border-stone-200 shadow-sm overflow-hidden">
+              {/* Header banner */}
+              <div className="bg-gradient-to-r from-stone-900 via-stone-800 to-red-950 p-6 text-white">
+                <div className="flex items-center gap-2 mb-1 text-xs font-semibold uppercase tracking-wider text-red-300">
+                  <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                  <span>Yagona Administrator Profili</span>
+                </div>
+                <h3 className="text-2xl font-bold font-serif">Admin Sozlamalari & Shaxsiy Profil</h3>
+                <p className="text-xs text-stone-300 mt-1">
+                  Ushbu bo‘limda administrator o‘z rasmi (avatar), nik va unvonini sozlashi mumkin.
+                </p>
+              </div>
+
+              {/* Form */}
+              <form onSubmit={handleSaveProfile} className="p-6 space-y-6">
+                {profileMessage && (
+                  <div
+                    className={`p-3.5 rounded-xl text-sm font-medium flex items-center gap-2 ${
+                      profileMessage.type === 'success'
+                        ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                        : 'bg-red-50 text-red-800 border border-red-200'
+                    }`}
+                  >
+                    {profileMessage.type === 'success' ? (
+                      <Check className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                    ) : (
+                      <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0" />
+                    )}
+                    <span>{profileMessage.text}</span>
+                  </div>
+                )}
+
+                {/* Avatar Preview & Uploader */}
+                <div className="flex flex-col sm:flex-row items-center gap-6 p-5 rounded-xl bg-stone-50 border border-stone-200">
+                  <div className="relative group">
+                    <img
+                      src={profileAvatar}
+                      alt={profileUsername}
+                      className="w-24 h-24 rounded-full object-cover border-4 border-white shadow-md transition-transform group-hover:scale-105"
+                    />
+                    <label
+                      htmlFor="profile-tab-avatar-upload"
+                      className="absolute bottom-0 right-0 p-2 bg-red-700 hover:bg-red-800 text-white rounded-full shadow-lg cursor-pointer transition-colors"
+                      title="Rasm yuklash"
+                    >
+                      <Camera className="w-4 h-4" />
+                      <input
+                        id="profile-tab-avatar-upload"
+                        type="file"
+                        accept="image/*"
+                        onChange={handleProfileAvatarUpload}
+                        className="hidden"
+                      />
+                    </label>
+                  </div>
+
+                  <div className="flex-1 text-center sm:text-left space-y-2">
+                    <div className="flex items-center justify-center sm:justify-start gap-2">
+                      <span className="text-base font-bold text-stone-900">
+                        {profileUsername || 'Administrator'}
+                      </span>
+                      <span className="px-2 py-0.5 text-[10px] font-bold uppercase rounded bg-red-100 text-red-700">
+                        Admin
+                      </span>
+                    </div>
+                    <p className="text-xs text-stone-500">
+                      {profileTitle || 'Bosh Muharrir & Tahririyat Rahbari'}
+                    </p>
+
+                    {/* Preset Avatars */}
+                    <div className="pt-2">
+                      <div className="text-[11px] font-medium text-stone-500 mb-1.5">
+                        Tayyor avatarlar:
+                      </div>
+                      <div className="flex items-center justify-center sm:justify-start gap-2 flex-wrap">
+                        {[
+                          'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
+                          'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80',
+                          'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=400&q=80',
+                          'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=400&q=80',
+                          'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=400&q=80',
+                          'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=400&q=80'
+                        ].map((url, idx) => (
+                          <button
+                            key={idx}
+                            type="button"
+                            onClick={() => setProfileAvatar(url)}
+                            className={`w-7 h-7 rounded-full overflow-hidden border-2 transition-all ${
+                              profileAvatar === url
+                                ? 'border-red-600 scale-110 shadow-xs'
+                                : 'border-transparent opacity-70 hover:opacity-100'
+                            }`}
+                          >
+                            <img src={url} alt={`Preset ${idx}`} className="w-full h-full object-cover" />
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Form Fields */}
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-stone-700 uppercase tracking-wider mb-1.5">
+                      Nik / Foydalanuvchi nomi *
+                    </label>
+                    <div className="relative">
+                      <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
+                      <input
+                        type="text"
+                        value={profileUsername}
+                        onChange={(e) => setProfileUsername(e.target.value)}
+                        placeholder="Masalan: Chief Editor"
+                        required
+                        className="w-full pl-9 pr-3 py-2 text-sm bg-stone-50 border border-stone-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-700 text-stone-900"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-stone-700 uppercase tracking-wider mb-1.5">
+                      Avatar URL (Ixtiyoriy to‘g‘ridan-to‘g‘ri havola)
+                    </label>
+                    <input
+                      type="url"
+                      value={profileAvatar}
+                      onChange={(e) => setProfileAvatar(e.target.value)}
+                      placeholder="https://..."
+                      className="w-full px-3 py-2 text-xs font-mono bg-stone-50 border border-stone-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-700 text-stone-900"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-stone-700 uppercase tracking-wider mb-1.5">
+                      Lavozim / Unvon (Title)
+                    </label>
+                    <div className="relative">
+                      <Briefcase className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
+                      <input
+                        type="text"
+                        value={profileTitle}
+                        onChange={(e) => setProfileTitle(e.target.value)}
+                        placeholder="Masalan: Bosh Muharrir & Tahririyat Rahbari"
+                        className="w-full pl-9 pr-3 py-2 text-sm bg-stone-50 border border-stone-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-700 text-stone-900"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-stone-700 uppercase tracking-wider mb-1.5">
+                      Admin Elektron Pochta (Email)
+                    </label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
+                      <input
+                        type="email"
+                        value={profileEmail}
+                        onChange={(e) => setProfileEmail(e.target.value)}
+                        required
+                        className="w-full pl-9 pr-3 py-2 text-sm bg-stone-50 border border-stone-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-700 text-stone-900"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="p-4 rounded-xl bg-amber-50/70 border border-amber-200 text-amber-900 text-xs flex items-start gap-2.5">
+                    <ShieldCheck className="w-4 h-4 text-amber-700 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <span className="font-bold block mb-0.5">Admin Xavfsizlik Himoyasi:</span>
+                      <p className="text-[11px] leading-relaxed text-amber-800">
+                        Admin paroli yuqori darajada shifrlangan (BCrypt Salt 12). Ruxsatsiz begona shaxslar parolni o‘zgartirib admin bo‘la olmasligi uchun veb-interfeys orqali parolni yangilash butunlay o‘chirib qo‘yilgan.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="pt-4 border-t border-stone-200 flex items-center justify-between">
+                  <span className="text-xs text-stone-500">
+                    Oxirgi kirish vaqti: {adminUser.lastLogin ? new Date(adminUser.lastLogin).toLocaleString() : 'Yaqinda'}
+                  </span>
+
+                  <button
+                    type="submit"
+                    disabled={profileSaving}
+                    className="px-6 py-2.5 bg-red-700 hover:bg-red-800 text-white font-semibold text-sm rounded-xl shadow-md transition-all disabled:opacity-50 flex items-center gap-2"
+                  >
+                    {profileSaving ? (
+                      <>
+                        <RefreshCw className="w-4 h-4 animate-spin" />
+                        <span>Saqlanmoqda...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Check className="w-4 h-4" />
+                        <span>Profilni Saqlash</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
         )}

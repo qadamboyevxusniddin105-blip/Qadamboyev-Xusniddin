@@ -3,7 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import { Article, Category, AdminUser } from '../src/types.js';
 
-const DB_DIR = path.join(process.cwd(), 'data');
+const DB_DIR = process.env.VERCEL ? path.join('/tmp', 'data') : path.join(process.cwd(), 'data');
 const DB_FILE = path.join(DB_DIR, 'news_db.json');
 
 // Ensure data directory exists
@@ -18,17 +18,113 @@ export interface StoredAdmin {
   passwordHash: string;
   role: 'admin';
   lastLogin?: string;
+  avatar?: string;
+  title?: string;
+  isCustomPasswordSet?: boolean;
 }
+
+export interface AdminCredentialInfo {
+  id: string;
+  email: string;
+  username: string;
+  passwordPlainText: string;
+  title: string;
+  avatar: string;
+}
+
+export const INITIAL_10_ADMINS: AdminCredentialInfo[] = [
+  {
+    id: 'admin-01',
+    email: 'admin1@coder.uz',
+    username: 'admin1',
+    passwordPlainText: 'XusniddinAdmin1!',
+    title: 'Bosh Administrator & Dasturchi',
+    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80'
+  },
+  {
+    id: 'admin-02',
+    email: 'admin2@coder.uz',
+    username: 'admin2',
+    passwordPlainText: 'XusniddinAdmin2!',
+    title: 'Katta Tahririyat Bosh Muharriri',
+    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80'
+  },
+  {
+    id: 'admin-03',
+    email: 'admin3@coder.uz',
+    username: 'admin3',
+    passwordPlainText: 'XusniddinAdmin3!',
+    title: 'Axborot Texnologiyalari va AI Tahlilchisi',
+    avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=400&q=80'
+  },
+  {
+    id: 'admin-04',
+    email: 'admin4@coder.uz',
+    username: 'admin4',
+    passwordPlainText: 'XusniddinAdmin4!',
+    title: 'Xalqaro va Geopolitik Xabarlar Bo‘limi',
+    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=400&q=80'
+  },
+  {
+    id: 'admin-05',
+    email: 'admin5@coder.uz',
+    username: 'admin5',
+    passwordPlainText: 'XusniddinAdmin5!',
+    title: 'Iqtisodiyot va Moliya Muharriri',
+    avatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=400&q=80'
+  },
+  {
+    id: 'admin-06',
+    email: 'admin6@coder.uz',
+    username: 'admin6',
+    passwordPlainText: 'XusniddinAdmin6!',
+    title: 'Ilm-fan va Ekologiya Bo‘limi Rahbari',
+    avatar: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=400&q=80'
+  },
+  {
+    id: 'admin-07',
+    email: 'admin7@coder.uz',
+    username: 'admin7',
+    passwordPlainText: 'XusniddinAdmin7!',
+    title: 'Madaniyat va Zamonaviy San’at Muharriri',
+    avatar: 'https://images.unsplash.com/photo-1567532939604-b6b5b0db2604?auto=format&fit=crop&w=400&q=80'
+  },
+  {
+    id: 'admin-08',
+    email: 'admin8@coder.uz',
+    username: 'admin8',
+    passwordPlainText: 'XusniddinAdmin8!',
+    title: 'Kiberxavfsizlik va Texnik Nazoratchi',
+    avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=400&q=80'
+  },
+  {
+    id: 'admin-09',
+    email: 'admin9@coder.uz',
+    username: 'admin9',
+    passwordPlainText: 'XusniddinAdmin9!',
+    title: 'Faktchek va Nashrlar Verifikatori',
+    avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=400&q=80'
+  },
+  {
+    id: 'admin-10',
+    email: 'admin10@coder.uz',
+    username: 'admin10',
+    passwordPlainText: 'XusniddinAdmin10!',
+    title: 'Maxsus Tekshiruvlar va Reportajlar Koordinatori',
+    avatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=400&q=80'
+  }
+];
 
 export interface DBState {
   admin: StoredAdmin;
+  admins: StoredAdmin[];
   categories: Category[];
   articles: Article[];
 }
 
 // Initial Admin Credentials
-export const DEFAULT_ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@chronicle.news';
-export const DEFAULT_ADMIN_PASSWORD = process.env.ADMIN_INITIAL_PASSWORD || 'AdminSecure2026!#News';
+export const DEFAULT_ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin1@coder.uz';
+export const DEFAULT_ADMIN_PASSWORD = process.env.ADMIN_INITIAL_PASSWORD || 'XusniddinAdmin1!';
 
 // Pre-computed bcrypt hash for DEFAULT_ADMIN_PASSWORD with salt rounds 12
 const INITIAL_ADMIN_HASH = bcrypt.hashSync(DEFAULT_ADMIN_PASSWORD, 12);
@@ -249,11 +345,30 @@ class DatabaseService {
   }
 
   private loadDatabase(): DBState {
+    const initialAdmins: StoredAdmin[] = INITIAL_10_ADMINS.map(acc => ({
+      id: acc.id,
+      email: acc.email,
+      username: acc.username,
+      passwordHash: bcrypt.hashSync(acc.passwordPlainText, 10),
+      role: 'admin' as const,
+      avatar: acc.avatar,
+      title: acc.title,
+      isCustomPasswordSet: false
+    }));
+
     if (fs.existsSync(DB_FILE)) {
       try {
         const raw = fs.readFileSync(DB_FILE, 'utf-8');
         const parsed = JSON.parse(raw);
-        if (parsed && parsed.admin && parsed.articles && parsed.categories) {
+        if (parsed && parsed.articles && parsed.categories) {
+          if (!parsed.admins || parsed.admins.length < 10) {
+            parsed.admins = initialAdmins;
+            parsed.admin = parsed.admins[0];
+            this.saveDatabase(parsed);
+          }
+          if (!parsed.admin && parsed.admins && parsed.admins.length > 0) {
+            parsed.admin = parsed.admins[0];
+          }
           return parsed;
         }
       } catch (err) {
@@ -262,13 +377,8 @@ class DatabaseService {
     }
 
     const defaultState: DBState = {
-      admin: {
-        id: 'admin-01',
-        email: DEFAULT_ADMIN_EMAIL,
-        username: 'Chief Editor',
-        passwordHash: INITIAL_ADMIN_HASH,
-        role: 'admin'
-      },
+      admin: initialAdmins[0],
+      admins: initialAdmins,
       categories: INITIAL_CATEGORIES,
       articles: INITIAL_ARTICLES
     };
@@ -285,14 +395,107 @@ class DatabaseService {
     }
   }
 
-  // Admin access
-  public getAdmin(): StoredAdmin {
+  // Admin access & Multi-admin authentication
+  public getAdmins(): StoredAdmin[] {
+    if (!this.state.admins || this.state.admins.length === 0) {
+      return [this.getAdmin()];
+    }
+    return this.state.admins;
+  }
+
+  public getAdmin(id?: string): StoredAdmin {
+    if (id && this.state.admins) {
+      const found = this.state.admins.find(a => a.id === id);
+      if (found) return found;
+    }
+    if (this.state.admins && this.state.admins.length > 0) {
+      return this.state.admins[0];
+    }
     return this.state.admin;
   }
 
-  public updateAdminLastLogin(date: string): void {
-    this.state.admin.lastLogin = date;
+  public findAdminByLogin(login: string): StoredAdmin | undefined {
+    const query = (login || '').trim().toLowerCase();
+    if (!query) return undefined;
+
+    if (this.state.admins && this.state.admins.length > 0) {
+      const match = this.state.admins.find(a => 
+        a.email.toLowerCase() === query ||
+        a.username.toLowerCase() === query ||
+        a.id.toLowerCase() === query ||
+        (query.startsWith('admin') && (a.username.toLowerCase() === query || a.email.toLowerCase().startsWith(query + '@')))
+      );
+      if (match) return match;
+    }
+
+    if (this.state.admin) {
+      if (this.state.admin.email.toLowerCase() === query || this.state.admin.username.toLowerCase() === query) {
+        return this.state.admin;
+      }
+    }
+    return undefined;
+  }
+
+  public isCustomPasswordSet(): boolean {
+    return Boolean(this.state.admin.isCustomPasswordSet);
+  }
+
+  public async setMasterPassword(email: string, newPassword: string, username?: string): Promise<StoredAdmin> {
+    this.state.admin.email = email.trim().toLowerCase();
+    this.state.admin.passwordHash = await bcrypt.hash(newPassword, 12);
+    this.state.admin.isCustomPasswordSet = true;
+    if (username && username.trim()) {
+      this.state.admin.username = username.trim();
+    }
     this.saveDatabase();
+    return this.getAdmin();
+  }
+
+  public async changeAdminPassword(currentPassword: string, newPassword: string): Promise<boolean> {
+    const isMatch = await bcrypt.compare(currentPassword, this.state.admin.passwordHash);
+    if (!isMatch) return false;
+    this.state.admin.passwordHash = await bcrypt.hash(newPassword, 12);
+    this.state.admin.isCustomPasswordSet = true;
+    this.saveDatabase();
+    return true;
+  }
+
+  public updateAdminLastLogin(identifierOrDate: string, optionalDate?: string): void {
+    const date = optionalDate || identifierOrDate;
+    const identifier = optionalDate ? identifierOrDate : undefined;
+
+    if (identifier) {
+      const admin = this.findAdminByLogin(identifier) || this.getAdmin(identifier);
+      if (admin) {
+        admin.lastLogin = date;
+      }
+    }
+    if (this.state.admin) {
+      this.state.admin.lastLogin = date;
+    }
+    this.saveDatabase();
+  }
+
+  public async updateAdminProfile(idOrData: any, optionalData?: any): Promise<StoredAdmin> {
+    const id = typeof idOrData === 'string' ? idOrData : undefined;
+    const data = typeof idOrData === 'object' ? idOrData : optionalData || {};
+
+    const targetAdmin = (id ? this.getAdmin(id) : this.getAdmin()) || this.state.admin;
+
+    if (data.username && data.username.trim()) {
+      targetAdmin.username = data.username.trim();
+    }
+    if (data.avatar && data.avatar.trim()) {
+      targetAdmin.avatar = data.avatar.trim();
+    }
+    if (data.title && data.title.trim()) {
+      targetAdmin.title = data.title.trim();
+    }
+    if (data.email && data.email.trim()) {
+      targetAdmin.email = data.email.trim().toLowerCase();
+    }
+    this.saveDatabase();
+    return targetAdmin;
   }
 
   // Categories CRUD

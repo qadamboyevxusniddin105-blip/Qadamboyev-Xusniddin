@@ -1,225 +1,237 @@
 import React, { useState } from 'react';
-import { Search, Shield, ShieldCheck, Menu, X, Globe, TrendingUp, SunMedium } from 'lucide-react';
-import { Category, AdminUser } from '../types.js';
+import {
+  Search,
+  Shield,
+  ShieldCheck,
+  Sun,
+  Moon,
+  CalendarDays
+} from 'lucide-react';
+import { AdminUser, Language, Theme } from '../types.js';
+import { getTranslation } from '../lib/translations.js';
+import { BrandLogo } from './BrandLogo.js';
 
 interface HeaderProps {
-  categories: Category[];
-  selectedCategorySlug: string | null;
-  onSelectCategory: (slug: string | null) => void;
+  categories?: any[];
+  selectedCategorySlug?: string | null;
+  onSelectCategory?: (slug: string | null) => void;
   searchQuery: string;
   onSearchChange: (query: string) => void;
   onOpenAdmin: () => void;
+  onOpenProfile: () => void;
   adminUser: AdminUser | null;
   onHomeClick: () => void;
+  lang: Language;
+  onSelectLanguage: (lang: Language) => void;
+  theme: Theme;
+  onToggleTheme: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
-  categories,
-  selectedCategorySlug,
-  onSelectCategory,
   searchQuery,
   onSearchChange,
   onOpenAdmin,
+  onOpenProfile,
   adminUser,
   onHomeClick,
+  lang,
+  onSelectLanguage,
+  theme,
+  onToggleTheme,
 }) => {
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [langDropdownOpen, setLangDropdownOpen] = useState(false);
 
-  const todayStr = new Intl.DateTimeFormat('en-US', {
-    weekday: 'long',
-    month: 'long',
+  const t = (key: any) => getTranslation(lang, key);
+
+  // Localized date formatting
+  const dateLocales: Record<Language, string> = {
+    uz: 'uz-UZ',
+    ru: 'ru-RU',
+    en: 'en-US'
+  };
+
+  const todayStr = new Intl.DateTimeFormat(dateLocales[lang] || 'uz-UZ', {
+    weekday: 'short',
+    month: 'short',
     day: 'numeric',
     year: 'numeric'
   }).format(new Date());
 
+  const languageOptions: { code: Language; label: string; flag: string }[] = [
+    { code: 'uz', label: 'O‘zbek', flag: '🇺🇿' },
+    { code: 'ru', label: 'Русский', flag: '🇷🇺' },
+    { code: 'en', label: 'English', flag: '🇬🇧' }
+  ];
+
   return (
-    <header className="border-b border-stone-200 bg-[#faf9f6] sticky top-0 z-40">
-      {/* Top Utility & Security Bar */}
-      <div className="border-b border-stone-200/80 bg-stone-100/70 text-xs text-stone-600 px-4 py-1.5">
-        <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-center gap-3">
-            <span className="font-medium text-stone-800 tracking-wide uppercase">{todayStr}</span>
-            <span className="text-stone-300">|</span>
-            <span className="hidden sm:flex items-center gap-1 text-stone-500">
-              <Globe className="w-3.5 h-3.5" /> International Edition
-            </span>
-            <span className="hidden md:flex items-center gap-1.5 text-stone-600 pl-2">
-              <TrendingUp className="w-3.5 h-3.5 text-emerald-600" />
-              <span>Markets: S&P 500 +0.64% • NASDAQ +0.88% • Brent Crude $74.80</span>
-            </span>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <button
-              onClick={onOpenAdmin}
-              id="admin-console-trigger"
-              className={`flex items-center gap-1.5 px-2.5 py-0.5 rounded text-xs font-medium transition-all ${
-                adminUser
-                  ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200 border border-emerald-300'
-                  : 'bg-stone-200 text-stone-700 hover:bg-stone-300'
-              }`}
-              title={adminUser ? `Logged in as ${adminUser.username}` : 'Open Admin Console'}
-            >
-              {adminUser ? (
-                <>
-                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-                  <span>Editor Active ({adminUser.username})</span>
-                </>
-              ) : (
-                <>
-                  <Shield className="w-3.5 h-3.5 text-stone-500" />
-                  <span>Admin Console</span>
-                </>
-              )}
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Main Masthead */}
-      <div className="px-4 py-4 md:py-6 border-b border-stone-200/90 max-w-7xl mx-auto">
-        <div className="flex items-center justify-between gap-4">
-          <button
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="md:hidden p-2 text-stone-700 hover:text-stone-900 rounded-lg focus:outline-none"
-            aria-label="Toggle navigation menu"
+    <header className="border-b border-stone-200/90 dark:border-stone-800 bg-[#faf9f6]/95 dark:bg-[#141414]/95 backdrop-blur-md sticky top-0 z-30 transition-colors duration-200">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between h-14 sm:h-16 md:h-20 gap-2 sm:gap-4">
+          
+          {/* Brand Logo & Title */}
+          <div
+            onClick={onHomeClick}
+            id="brand-header-link"
+            className="flex items-center gap-2.5 sm:gap-3.5 cursor-pointer select-none group min-w-0"
           >
-            {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-          </button>
+            {/* Visual Emblem Badge from uploaded logo */}
+            <BrandLogo size="md" />
 
-          <div className="text-center flex-1 cursor-pointer" onClick={onHomeClick}>
-            <h1 className="text-3xl sm:text-4xl md:text-6xl font-extrabold tracking-tight text-stone-900 font-display">
-              THE CHRONICLE
-            </h1>
-            <p className="text-[11px] sm:text-xs tracking-[0.2em] uppercase font-sans text-stone-500 mt-1">
-              Independent Global Journalism & Editorial Intelligence
-            </p>
+            <div className="flex flex-col min-w-0">
+              <span className="text-lg sm:text-2xl md:text-2xl font-black tracking-tight text-stone-950 dark:text-stone-50 font-serif leading-none group-hover:text-cyan-700 dark:group-hover:text-cyan-400 transition-colors truncate">
+                {t('brandTitle')}
+              </span>
+              <span className="text-[10px] sm:text-xs text-stone-500 dark:text-stone-400 font-medium tracking-wide truncate hidden sm:block mt-0.5">
+                {t('brandTagline')}
+              </span>
+            </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          {/* Controls & Tools Bar (Search, Date, Theme, Language, Admin) */}
+          <div className="flex items-center gap-1.5 sm:gap-2.5 flex-shrink-0">
+            {/* Date Widget (Desktop only) */}
+            <div className="hidden lg:flex items-center gap-1.5 text-xs text-stone-500 dark:text-stone-400 font-medium mr-2 pr-3 border-r border-stone-200 dark:border-stone-800">
+              <CalendarDays className="w-3.5 h-3.5 text-red-700 dark:text-red-400" />
+              <span className="capitalize">{todayStr}</span>
+            </div>
+
+            {/* Quick Search Toggle */}
             <button
               onClick={() => setSearchOpen(!searchOpen)}
-              className="p-2 text-stone-600 hover:text-stone-900 rounded-full hover:bg-stone-200/70 transition-colors"
-              title="Search stories"
+              id="header-search-toggle"
+              className={`p-2 rounded-xl transition-colors ${
+                searchOpen
+                  ? 'bg-red-50 text-red-700 dark:bg-red-950/50 dark:text-red-400 ring-1 ring-red-300 dark:ring-red-900'
+                  : 'text-stone-600 dark:text-stone-300 hover:text-stone-950 dark:hover:text-stone-100 hover:bg-stone-200/60 dark:hover:bg-stone-800'
+              }`}
+              title={t('searchStories')}
               aria-label="Toggle search input"
             >
-              <Search className="w-5 h-5" />
+              <Search className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
             </button>
+
+            {/* Theme Switcher */}
+            <button
+              onClick={onToggleTheme}
+              id="header-theme-toggle"
+              className="p-2 rounded-xl text-stone-600 dark:text-stone-300 hover:text-stone-950 dark:hover:text-stone-100 hover:bg-stone-200/60 dark:hover:bg-stone-800 transition-colors"
+              title={theme === 'dark' ? t('navThemeLight') : t('navThemeDark')}
+              aria-label="Toggle night and day mode"
+            >
+              {theme === 'dark' ? (
+                <Sun className="w-4 h-4 sm:w-4.5 sm:h-4.5 text-amber-400" />
+              ) : (
+                <Moon className="w-4 h-4 sm:w-4.5 sm:h-4.5 text-stone-700" />
+              )}
+            </button>
+
+            {/* Language Selector Dropdown */}
+            <div className="relative">
+              <button
+                onClick={() => setLangDropdownOpen(!langDropdownOpen)}
+                id="header-lang-selector"
+                className="flex items-center gap-1 px-2 py-1.5 rounded-xl text-xs font-semibold text-stone-700 dark:text-stone-300 hover:bg-stone-200/60 dark:hover:bg-stone-800 transition-colors font-mono uppercase"
+                title={t('navLanguage')}
+              >
+                <span className="text-sm">{languageOptions.find((l) => l.code === lang)?.flag}</span>
+                <span className="hidden sm:inline">{lang}</span>
+              </button>
+
+              {langDropdownOpen && (
+                <div className="absolute right-0 top-full mt-1.5 w-36 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl shadow-xl p-1.5 z-50 animate-in fade-in zoom-in-95 duration-100">
+                  {languageOptions.map((opt) => (
+                    <button
+                      key={opt.code}
+                      onClick={() => {
+                        onSelectLanguage(opt.code);
+                        setLangDropdownOpen(false);
+                      }}
+                      className={`w-full flex items-center justify-between px-2.5 py-1.5 text-xs rounded-xl transition-colors ${
+                        lang === opt.code
+                          ? 'bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-400 font-bold'
+                          : 'text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800'
+                      }`}
+                    >
+                      <span className="flex items-center gap-2">
+                        <span>{opt.flag}</span>
+                        <span>{opt.label}</span>
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Admin Console & Profile Trigger */}
+            {adminUser ? (
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={onOpenProfile}
+                  id="admin-profile-trigger"
+                  className="flex items-center gap-1.5 px-2 sm:px-2.5 py-1.5 rounded-xl text-xs font-medium bg-stone-200/70 dark:bg-stone-800 text-stone-800 dark:text-stone-200 hover:bg-stone-300 dark:hover:bg-stone-700 transition-colors border border-stone-300/80 dark:border-stone-700"
+                  title={`${t('profileTitle')}: ${adminUser.username}`}
+                >
+                  <img
+                    src={adminUser.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=100&q=80'}
+                    alt={adminUser.username}
+                    className="w-4 h-4 sm:w-4.5 sm:h-4.5 rounded-full object-cover ring-1 ring-red-600"
+                  />
+                  <span className="font-semibold truncate max-w-[70px] sm:max-w-[100px] hidden xs:inline">
+                    {adminUser.username}
+                  </span>
+                </button>
+
+                <button
+                  onClick={onOpenAdmin}
+                  id="admin-console-trigger"
+                  className="p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl text-xs font-semibold bg-emerald-100 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-300 hover:bg-emerald-200 dark:hover:bg-emerald-900/60 border border-emerald-300 dark:border-emerald-800 transition-colors flex items-center gap-1"
+                  title={t('editorialConsole')}
+                >
+                  <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                  <span className="hidden md:inline">{t('navAdmin')}</span>
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={onOpenAdmin}
+                id="admin-console-trigger"
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-stone-200/70 dark:bg-stone-800 text-stone-700 dark:text-stone-300 hover:bg-stone-300/80 dark:hover:bg-stone-700 transition-colors"
+                title={t('adminLoginTitle')}
+              >
+                <Shield className="w-4 h-4 text-stone-500 dark:text-stone-400" />
+                <span className="hidden sm:inline">{t('navAdmin')}</span>
+              </button>
+            )}
+
           </div>
         </div>
 
-        {/* Collapsible Search Input */}
+        {/* Collapsible Search Input for PC and Mobile */}
         {searchOpen && (
-          <div className="mt-3 pt-3 border-t border-stone-200 animate-in fade-in duration-150">
-            <div className="relative max-w-xl mx-auto">
+          <div className="pb-3.5 pt-1 border-t border-stone-200/70 dark:border-stone-800 animate-in fade-in duration-150">
+            <div className="relative max-w-2xl mx-auto">
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => onSearchChange(e.target.value)}
-                placeholder="Search across reports, investigations, and analysis..."
-                className="w-full pl-10 pr-10 py-2 text-sm bg-white border border-stone-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-stone-400 focus:border-stone-500 shadow-sm"
+                placeholder={t('searchPlaceholder')}
+                className="w-full pl-10 pr-12 py-2 text-sm bg-white dark:bg-stone-800 border border-stone-300 dark:border-stone-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-600 text-stone-900 dark:text-stone-100 shadow-xs"
                 autoFocus
               />
               {searchQuery && (
                 <button
                   onClick={() => onSearchChange('')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-stone-400 hover:text-stone-700 p-1"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 p-1"
                 >
-                  Clear
+                  {t('clear')}
                 </button>
               )}
             </div>
           </div>
         )}
       </div>
-
-      {/* Desktop Category Navigation */}
-      <nav className="hidden md:block border-b border-stone-200 bg-[#faf9f6]">
-        <div className="max-w-7xl mx-auto px-4 flex items-center justify-center gap-1 overflow-x-auto py-1">
-          <button
-            onClick={() => onSelectCategory(null)}
-            className={`px-3.5 py-2 text-xs font-semibold uppercase tracking-wider rounded transition-colors whitespace-nowrap ${
-              selectedCategorySlug === null
-                ? 'text-stone-900 border-b-2 border-stone-900 font-bold'
-                : 'text-stone-600 hover:text-stone-900'
-            }`}
-          >
-            All Stories
-          </button>
-
-          {categories.map((cat) => {
-            const isSelected = selectedCategorySlug === cat.slug;
-            return (
-              <button
-                key={cat.id}
-                onClick={() => onSelectCategory(cat.slug)}
-                className={`px-3.5 py-2 text-xs font-semibold uppercase tracking-wider rounded transition-colors whitespace-nowrap ${
-                  isSelected
-                    ? 'text-stone-900 border-b-2 font-bold'
-                    : 'text-stone-600 hover:text-stone-900'
-                }`}
-                style={{
-                  borderBottomColor: isSelected ? cat.color : 'transparent',
-                }}
-              >
-                {cat.name}
-              </button>
-            );
-          })}
-        </div>
-      </nav>
-
-      {/* Mobile Drawer */}
-      {mobileMenuOpen && (
-        <div className="md:hidden border-b border-stone-200 bg-white px-4 py-4 space-y-3 shadow-lg">
-          <div className="text-xs font-bold uppercase tracking-wider text-stone-400">Categories</div>
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              onClick={() => {
-                onSelectCategory(null);
-                setMobileMenuOpen(false);
-              }}
-              className={`text-left px-3 py-2 text-xs font-medium rounded-lg ${
-                selectedCategorySlug === null ? 'bg-stone-900 text-white' : 'bg-stone-100 text-stone-700'
-              }`}
-            >
-              All Stories
-            </button>
-            {categories.map((cat) => (
-              <button
-                key={cat.id}
-                onClick={() => {
-                  onSelectCategory(cat.slug);
-                  setMobileMenuOpen(false);
-                }}
-                className={`text-left px-3 py-2 text-xs font-medium rounded-lg flex items-center justify-between ${
-                  selectedCategorySlug === cat.slug ? 'bg-stone-900 text-white' : 'bg-stone-100 text-stone-700'
-                }`}
-              >
-                <span>{cat.name}</span>
-                {cat.articleCount !== undefined && (
-                  <span className="text-[10px] opacity-75">{cat.articleCount}</span>
-                )}
-              </button>
-            ))}
-          </div>
-
-          <div className="pt-2 border-t border-stone-200 flex justify-between items-center">
-            <button
-              onClick={() => {
-                onOpenAdmin();
-                setMobileMenuOpen(false);
-              }}
-              className="text-xs font-semibold text-stone-800 flex items-center gap-1.5"
-            >
-              <Shield className="w-4 h-4 text-stone-600" />
-              <span>Admin & Editorial Portal</span>
-            </button>
-          </div>
-        </div>
-      )}
     </header>
   );
 };

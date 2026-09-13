@@ -1,6 +1,6 @@
 {
-  "name": "Chronicle - Modern News & Editorial Magazine",
-  "description": "A modern, secure news and magazine publishing platform featuring OWASP Top 10 security, single-admin editorial CMS, category management, rich text publishing, and lightning-fast reader experience.",
+  "name": "Xusniddin coder",
+  "description": "Xusniddin coder - Zamonaviy axborot portali va tahliliy yangiliklar platformasi.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

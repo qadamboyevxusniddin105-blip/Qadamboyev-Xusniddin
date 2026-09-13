@@ -1,0 +1,89 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="100%" height="100%">
+  <defs>
+    <!-- Background subtle radial glow -->
+    <radialGradient id="cyberGlow" cx="50%" cy="45%" r="60%">
+      <stop offset="0%" stop-color="#00f2fe" stop-opacity="0.3"/>
+      <stop offset="60%" stop-color="#0052d4" stop-opacity="0.1"/>
+      <stop offset="100%" stop-color="#000000" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Main Outer Loop Gradient (Teal-Cyan to Royal Blue) -->
+    <linearGradient id="neonLoopGrad" x1="15%" y1="15%" x2="65%" y2="85%">
+      <stop offset="0%" stop-color="#4df6fe"/>
+      <stop offset="35%" stop-color="#00d2ff"/>
+      <stop offset="70%" stop-color="#0072ff"/>
+      <stop offset="100%" stop-color="#004cd8"/>
+    </linearGradient>
+
+    <!-- Top Roof & Sharp Spike Gradient (Bright Mint to Aqua Cyan) -->
+    <linearGradient id="spikeGrad" x1="10%" y1="0%" x2="90%" y2="90%">
+      <stop offset="0%" stop-color="#e0fff9"/>
+      <stop offset="25%" stop-color="#3bf0e4"/>
+      <stop offset="60%" stop-color="#00e5ff"/>
+      <stop offset="100%" stop-color="#00b0ff"/>
+    </linearGradient>
+
+    <!-- Inner Edge Depth Gradient -->
+    <linearGradient id="innerDepthGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00f2fe"/>
+      <stop offset="100%" stop-color="#0052d4"/>
+    </linearGradient>
+
+    <filter id="neonBloom" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Dark cyber background tile for standalone view -->
+  <rect width="400" height="400" rx="40" fill="#090d14"/>
+
+  <!-- Ambient background glow behind logo -->
+  <circle cx="200" cy="180" r="140" fill="url(#cyberGlow)" />
+
+  <!-- The Geometric Emblem from user's image -->
+  <g filter="url(#neonBloom)">
+    <!-- Left Ribbon & Bottom Loop -->
+    <path
+      d="M 182 78
+         L 76 184
+         C 70 190, 70 200, 76 206
+         L 158 288
+         C 164 294, 174 294, 180 288
+         L 242 226
+         L 198 182
+         L 168 212
+         C 164 216, 158 216, 154 212
+         L 126 184
+         L 182 128
+         Z"
+      fill="url(#neonLoopGrad)"
+    />
+
+    <!-- Top Roof & Extended Needle-Sharp Spike (Xusniddin Webcraft) -->
+    <path
+      d="M 182 78
+         L 214 80
+         L 348 198
+         L 246 144
+         L 212 118
+         L 182 78
+         Z"
+      fill="url(#spikeGrad)"
+    />
+
+    <!-- Inner Geometric Diagonal Facet -->
+    <path
+      d="M 212 118
+         L 246 144
+         L 188 202
+         L 156 170
+         Z"
+      fill="url(#innerDepthGrad)"
+      opacity="0.9"
+    />
+  </g>
+</svg>
